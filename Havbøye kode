@@ -1,0 +1,480 @@
+int led= 7;
+
+// temp/presure/hum st
+
+
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+
+#define BME_SCK 13
+#define BME_MISO 12
+#define BME_MOSI 11
+#define BME_CS 10
+
+#define SEALEVELPRESSURE_HPA (1013.25)
+
+Adafruit_BME280 bme; // I2C
+//Adafruit_BME280 bme(BME_CS); // hardware SPI
+//Adafruit_BME280 bme(BME_CS, BME_MOSI, BME_MISO, BME_SCK); // software SPI
+
+unsigned long delayTime;
+// temp/presure/hum sl
+
+//gps st
+#include <Arduino_MKRGPS.h>
+int epochtime;
+int prev_epochtime;
+float latitude;
+float longitude;
+float altitude;
+float speed;  
+int   satellites;
+
+// gps sl
+
+// 3axis gyro st
+
+// Basic demo for accelerometer readings from Adafruit LIS3DH
+
+#include <Wire.h>
+#include <SPI.h>
+#include <Adafruit_LIS3DH.h>
+#include <Adafruit_Sensor.h>
+
+// Used for software SPI
+//#define LIS3DH_CLK 13
+//#define LIS3DH_MISO 12
+//#define LIS3DH_MOSI 11
+// Used for hardware & software SPI
+//#define LIS3DH_CS 10
+
+// software SPI
+//Adafruit_LIS3DH lis = Adafruit_LIS3DH(LIS3DH_CS, LIS3DH_MOSI, LIS3DH_MISO, LIS3DH_CLK);
+// hardware SPI
+//Adafruit_LIS3DH lis = Adafruit_LIS3DH(LIS3DH_CS);
+// I2C
+Adafruit_LIS3DH lis = Adafruit_LIS3DH();
+//3axis gyro sl
+
+
+
+// Temp probe st
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+#define ONE_WIRE_BUS 5
+
+OneWire oneWire(ONE_WIRE_BUS);
+
+DallasTemperature sensors(&oneWire);
+
+ float Celcius=0;
+ float Fahrenheit=0;
+// Temp probe sl
+
+
+
+char buffer[256];
+
+// libraries
+
+#include <MKRNB.h>
+
+
+#include "arduino_secrets.h"
+
+// Please enter your sensitive data in the Secret tab or arduino_secrets.h
+
+// PIN Number
+
+
+const char PINNUMBER[]     = SECRET_PINNUMBER;
+
+
+// initialize the library instance
+
+
+NBClient client;
+
+
+GPRS gprs;
+
+
+NB nbAccess;
+
+
+// URL, path and port (for example: example.org)
+
+char server[] = "sensor.marin.ntnu.no";
+
+char path[] = "/cgi-bin/tof.cgi?";
+
+int port = 80; // port 80 is the default for HTTP
+
+
+
+void setup() {
+  delay(10000);
+  
+  Serial.begin(9600);
+
+  prev_epochtime = 0;
+  // gps st
+ // initialize serial communications and wait for port to open:
+  
+ 
+
+  // If you are using the MKR GPS as shield, change the next line to pass
+  // the GPS_MODE_SHIELD parameter to the GPS.begin(...)
+  GPS.begin(GPS_MODE_I2C);
+  if (!GPS.begin()) {
+    Serial.println("Failed to initialize GPS!");
+    while (1);
+  }
+  else 
+  {
+    delay(1000);
+   Serial.println("Connected to mrk GPS shield");
+  }
+
+
+// gps sl
+
+  // initialize serial communications and wait for port to open:
+
+
+
+  // temp/presure/hum st
+    Serial.println(F("BME280 test"));
+
+  bool status;
+  
+  // default settings
+  // (you can also pass in a Wire library object like &Wire2)
+  status = bme.begin();  
+  if (!status) {
+    Serial.println("Could not find a valid BME280 sensor, check wiring!");
+    while (1);
+  }
+  
+  Serial.println("-- Default Test --");
+  delayTime = 1000;
+
+  Serial.println();
+  // temp/presure/hum sl
+
+
+
+
+  // Temp probe st
+  sensors.begin();
+  pinMode(ONE_WIRE_BUS, INPUT_PULLUP);
+  // Temp probe sl
+
+
+  
+
+  Serial.println("Starting Arduino web client.");
+
+
+  // connection state
+
+
+  boolean connected = false;
+
+
+  // After starting the modem with NB.begin()
+
+
+  // attach to the GPRS network with the APN, login and password
+
+
+  while (!connected) {
+
+
+    if ((nbAccess.begin(PINNUMBER) == NB_READY) &&
+
+
+        (gprs.attachGPRS() == GPRS_READY)) {
+
+
+      connected = true;
+
+
+    } else {
+
+
+      Serial.println("Not connected");
+
+
+      delay(1000);
+
+
+    }
+
+
+  }
+
+
+  Serial.println("connecting...");
+
+
+  // if you get a connection, report back via serial:
+
+
+  if (client.connect(server, port)) {
+
+
+    Serial.println("connected");
+
+
+    // Make a HTTP request:
+
+
+    client.print("GET ");
+
+
+    client.print(path);
+
+
+    client.println(" HTTP/1.1");
+
+
+    client.print("Host: ");
+
+
+    client.println(server);
+
+
+    client.println("Connection: close");
+
+
+    client.println();
+
+
+  } else {
+
+
+    // if you didn't get a connection to the server:
+
+
+    Serial.println("connection failed");
+
+
+  }
+// 3axis gyro st 
+
+ 
+
+  Serial.println("LIS3DH test!");
+
+  if (! lis.begin(0x18)) {   // change this to 0x19 for alternative i2c address
+    Serial.println("Couldnt start");
+    while (1) yield();
+  }
+  Serial.println("LIS3DH found!");
+
+  // lis.setRange(LIS3DH_RANGE_4_G);   // 2, 4, 8 or 16 G!
+
+  Serial.print("Range = "); Serial.print(2 << lis.getRange());
+  Serial.println("G");
+
+  // lis.setDataRate(LIS3DH_DATARATE_50_HZ);
+  Serial.print("Data rate set to: ");
+  switch (lis.getDataRate()) {
+    case LIS3DH_DATARATE_1_HZ: Serial.println("1 Hz"); break;
+    case LIS3DH_DATARATE_10_HZ: Serial.println("10 Hz"); break;
+    case LIS3DH_DATARATE_25_HZ: Serial.println("25 Hz"); break;
+    case LIS3DH_DATARATE_50_HZ: Serial.println("50 Hz"); break;
+    case LIS3DH_DATARATE_100_HZ: Serial.println("100 Hz"); break;
+    case LIS3DH_DATARATE_200_HZ: Serial.println("200 Hz"); break;
+    case LIS3DH_DATARATE_400_HZ: Serial.println("400 Hz"); break;
+
+    case LIS3DH_DATARATE_POWERDOWN: Serial.println("Powered Down"); break;
+    case LIS3DH_DATARATE_LOWPOWER_5KHZ: Serial.println("5 Khz Low Power"); break;
+    case LIS3DH_DATARATE_LOWPOWER_1K6HZ: Serial.println("16 Khz Low Power"); break;
+  }
+
+// 3axis gyro sl
+
+
+}
+
+
+void loop() {
+
+ 
+ prev_epochtime = epochtime;
+
+
+
+  delay(150);
+  //gps st
+Serial.println("checking gps");
+  // check if there is new GPS data available
+  delay(150);
+
+   if (GPS.available()) { 
+    // read GPS values
+    float latitude   = GPS.latitude();
+    float longitude  = GPS.longitude();
+    float altitude   = GPS.altitude();
+    float speed      = GPS.speed();
+    int   satellites = GPS.satellites();
+        epochtime  = GPS.getTime();
+
+    // print GPS values
+    Serial.print("Location: ");
+    Serial.print(latitude, 7);
+    Serial.print(", ");
+    Serial.println(longitude, 7);
+
+    Serial.print("Altitude: ");
+    Serial.print(altitude);
+    Serial.println("m");
+
+    Serial.print("Ground speed: ");
+    Serial.print(speed);
+    Serial.println(" km/h");
+
+    Serial.print("Number of satellites: ");
+    Serial.println(satellites);
+
+    Serial.print("time:");
+    Serial.println(epochtime);
+
+    Serial.println();
+   }
+  
+// gps sl
+
+ // temp/presure/hum st
+
+ printValues();
+  //temp/presure/hum sl
+
+
+  // if there are incoming bytes available
+
+
+  // from the server, read them and print them:
+
+
+  if (client.available()) {
+    if (client.connect(server, port)) {
+
+// 3 axis gyro st
+
+ lis.read();      // get X Y and Z data at once
+  // Then print out the raw data
+  Serial.print("X:  "); Serial.print(lis.x);
+  Serial.print("  \tY:  "); Serial.print(lis.y);
+  Serial.print("  \tZ:  "); Serial.print(lis.z);
+
+  /* Or....get a new sensor event, normalized */
+  sensors_event_t event;
+  lis.getEvent(&event);
+
+  /* Display the results (acceleration is measured in m/s^2) */
+  Serial.print("\t\tX: "); Serial.print(event.acceleration.x);
+  Serial.print(" \tY: "); Serial.print(event.acceleration.y);
+  Serial.print(" \tZ: "); Serial.print(event.acceleration.z);
+  Serial.println(" m/s^2 ");
+
+  Serial.println();
+
+ 
+// 3axis gyro sl
+
+      
+      // probe st
+      sensors.requestTemperatures();
+      Celcius = sensors.getTempCByIndex(0);
+      Fahrenheit = sensors.toFahrenheit(Celcius);
+      Serial.print(Celcius);
+      Serial.println(" ℃ ");
+      delay(100);
+
+      // Probe sl
+
+      Serial.println("connected");
+      // Make a HTTP request: Nok info for å sende en melding til serveren
+      client.print("GET ");
+      //client.print("/cgi-bin/tof.cgi?Joeltest,hei2");
+      // sprintf(buffer,"/cgi-bin/tof.cgi\?BENDIK,lat=%lf,lon=%lf,alt=%lf,speed=%lf,sat=%d,epo_time=%d,temp=%lf", latitude, longitude, altitude, speed, satellites, epochtime, celsius);
+      //sprintf(buffer,"/cgi-bin/tof.cgi\?Joeltest,temp=%lf",  Celcius);
+      //sprintf(buffer,"/cgi-bin/tof.cgi\?Joeltest,temp=%lf,x-axis=%lf,y-axis=%lf,z-axis=%lf,",  Celcius, event.acceleration.x, event.acceleration.y, event.acceleration.z);
+      //sprintf(buffer,"/cgi-bin/tof.cgi\?Joeltest,temp=%lf,x-axis=%lf,y-axis=%lf,z-axis=%lf,lat=%lf,lon=%lf,alt=%lf,speed=%lf,sat=%d,epo_time=%d",  Celcius, event.acceleration.x, event.acceleration.y, event.acceleration.z,latitude, longitude, altitude, speed, satellites, epochtime);
+      sprintf(buffer,"/cgi-bin/tof.cgi\?ASKRJO,temp=%lf,x-axis=%lf,y-axis=%lf,z-axis=%lf,lat=%lf,lon=%lf,alt=%lf,speed=%lf,sat=%d,epo_time=%d,templuft=%lf,trykk=%lf,fuktighet% =%lf,",  Celcius, event.acceleration.x, event.acceleration.y, event.acceleration.z,latitude, longitude, altitude, speed, satellites, epochtime, bme.readTemperature(), bme.readPressure() / 100.0F, bme.readHumidity());
+      client.print(buffer);
+      client.println(" HTTP/1.1");
+      client.print("Host: ");
+      client.println(server);
+      client.println("Connection: close");
+      client.println();
+    } else {
+      // if you didn't get a connection to the server:
+      Serial.println("connection failed");
+    }
+
+
+
+
+  }
+
+
+  // if the server's disconnected, stop the client:
+
+
+  if (!client.available() && !client.connected()) {
+
+
+    Serial.println();
+
+
+    Serial.println("disconnecting.");
+
+
+    client.stop();
+
+
+    // do nothing forevermore:
+
+
+    for (;;)
+
+
+      ;
+
+
+  }
+
+}
+
+// temp/hum/pressure
+void printValues() {
+  Serial.print("Temperature = ");
+  Serial.print(bme.readTemperature());
+  Serial.println(" *C");
+  
+  // Convert temperature to Fahrenheit
+  /*Serial.print("Temperature = ");
+  Serial.print(1.8 * bme.readTemperature() + 32);
+  Serial.println(" *F");*/
+  
+  Serial.print("Pressure = ");
+  Serial.print(bme.readPressure() / 100.0F);
+  Serial.println(" hPa");
+  
+
+  Serial.print(bme.readAltitude(SEALEVELPRESSURE_HPA));
+ 
+  
+  Serial.print("Humidity = ");
+  Serial.print(bme.readHumidity());
+  Serial.println(" %");
+  
+  Serial.println();
+}
